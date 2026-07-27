@@ -144,7 +144,21 @@
   <div class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="modal-slate">
     <div class="modal-stage">
       <button class="nav-btn nav-prev" id="btn-prev" title="이전 프레임">‹</button>
-      <div id="modal-media" class="modal-media"></div>
+
+      <div class="stage-inner">
+        <!-- 실제 프레임과 똑같은 16:9. 여기 보이는 그대로가 저장된다. -->
+        <div id="modal-media" class="modal-media crop"></div>
+
+        <div id="transport" class="transport" hidden>
+          <button class="hud-btn" id="tp-toggle" title="재생 / 일시정지">▶</button>
+          <span class="tp-time" id="tp-time">0:00</span>
+          <input type="range" id="tp-seek" class="tp-seek" min="0" max="1000" value="0"
+                 aria-label="재생 위치">
+          <span class="tp-time" id="tp-total">0:00</span>
+          <button class="hud-btn" id="tp-sound" title="소리 켜기 / 끄기">🔊</button>
+        </div>
+      </div>
+
       <button class="nav-btn nav-next" id="btn-next" title="다음 프레임">›</button>
     </div>
 
@@ -168,6 +182,45 @@
         <button id="btn-delete-scene" class="btn btn-ghost btn-sm danger">프레임 삭제</button>
       </div>
 
+      <!-- 화면 조정 -->
+      <details id="adjust-panel" class="adjust">
+        <summary>
+          <span class="field-label">화면 조정</span>
+          <span class="adjust-state" id="adjust-state"></span>
+        </summary>
+
+        <div class="adjust-body">
+          <div class="seg" role="group" aria-label="채우기 방식">
+            <button class="seg-btn" data-fit="contain" title="이미지 전체가 들어오게">전체</button>
+            <button class="seg-btn" data-fit="cover" title="프레임을 꽉 채우게 (넘치면 잘림)">채움</button>
+            <span class="seg-note">화면을 끌면 위치, 휠은 확대</span>
+          </div>
+
+          <label class="slider">
+            <span>확대 <b data-out="zoom"></b></span>
+            <input type="range" data-adj="zoom" min="1" max="4" step="0.01">
+          </label>
+          <label class="slider">
+            <span>명도 <b data-out="brightness"></b></span>
+            <input type="range" data-adj="brightness" min="0.2" max="2" step="0.01">
+          </label>
+          <label class="slider">
+            <span>대비 <b data-out="contrast"></b></span>
+            <input type="range" data-adj="contrast" min="0.2" max="2" step="0.01">
+          </label>
+          <label class="slider">
+            <span>채도 <b data-out="saturation"></b></span>
+            <input type="range" data-adj="saturation" min="0" max="2" step="0.01">
+          </label>
+          <label class="slider">
+            <span>노이즈 <b data-out="grain"></b></span>
+            <input type="range" data-adj="grain" min="0" max="1" step="0.01">
+          </label>
+
+          <button id="btn-adjust-reset" class="btn btn-ghost btn-sm btn-block">원래대로</button>
+        </div>
+      </details>
+
       <div class="side-comments">
         <p class="field-label">코멘트</p>
         <div id="comment-list" class="comment-list"></div>
@@ -184,7 +237,7 @@
 
 <!-- ───────── 선택 구간 이어서 재생 ───────── -->
 <div id="player" class="player" hidden>
-  <div class="player-stage" id="player-stage"></div>
+  <div class="player-stage crop" id="player-stage"></div>
 
   <div class="player-bar">
     <button class="hud-btn" id="pl-prev" title="이전">‹</button>

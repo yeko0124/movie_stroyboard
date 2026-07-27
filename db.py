@@ -46,6 +46,15 @@ CREATE TABLE IF NOT EXISTS scenes (
     media_name  TEXT,
     media_mime  TEXT,
     media_size  INTEGER,
+    -- 프레임 안에서의 화면 조정 (16:9 틀은 고정)
+    fit         TEXT NOT NULL DEFAULT 'contain',
+    zoom        REAL NOT NULL DEFAULT 1,
+    off_x       REAL NOT NULL DEFAULT 0,
+    off_y       REAL NOT NULL DEFAULT 0,
+    brightness  REAL NOT NULL DEFAULT 1,
+    contrast    REAL NOT NULL DEFAULT 1,
+    saturation  REAL NOT NULL DEFAULT 1,
+    grain       REAL NOT NULL DEFAULT 0,
     created_at  TEXT NOT NULL,
     updated_at  TEXT NOT NULL
 );
@@ -106,9 +115,23 @@ def init() -> None:
         migrate(conn)
 
 
+SCENE_COLUMNS = (
+    ("x", "REAL NOT NULL DEFAULT 0"),
+    ("y", "REAL NOT NULL DEFAULT 0"),
+    ("fit", "TEXT NOT NULL DEFAULT 'contain'"),
+    ("zoom", "REAL NOT NULL DEFAULT 1"),
+    ("off_x", "REAL NOT NULL DEFAULT 0"),
+    ("off_y", "REAL NOT NULL DEFAULT 0"),
+    ("brightness", "REAL NOT NULL DEFAULT 1"),
+    ("contrast", "REAL NOT NULL DEFAULT 1"),
+    ("saturation", "REAL NOT NULL DEFAULT 1"),
+    ("grain", "REAL NOT NULL DEFAULT 0"),
+)
+
+
 def migrate(conn: sqlite3.Connection) -> None:
     """예전 버전으로 만든 파일도 열리도록 빠진 컬럼만 채워 넣는다."""
     have = {row["name"] for row in conn.execute("PRAGMA table_info(scenes)")}
-    for column, ddl in (("x", "REAL NOT NULL DEFAULT 0"), ("y", "REAL NOT NULL DEFAULT 0")):
+    for column, ddl in SCENE_COLUMNS:
         if column not in have:
             conn.execute(f"ALTER TABLE scenes ADD COLUMN {column} {ddl}")

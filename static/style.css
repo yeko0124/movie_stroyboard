@@ -408,13 +408,34 @@ textarea { resize: vertical; }
 .frame-node.selected .frame-box { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 .frame-node.file-over .frame-box { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
 
-.frame-box img, .frame-box video {
+/* ───────── 프레임 안 화면 조정 (16:9 틀은 고정) ─────────
+   위치·확대는 transform, 색은 filter, 노이즈는 위에 덮는 막으로 처리한다.
+   translate 를 scale 보다 먼저 써서 끄는 만큼 1:1 로 움직이게 한다.        */
+.crop { position: relative; overflow: hidden; }
+
+.crop > img, .crop > video {
+  position: absolute;
+  inset: 0;
   width: 100%; height: 100%;
-  object-fit: contain;
   display: block;
   background: var(--frame-ink);
-  pointer-events: none;
+  object-fit: var(--fit, contain);
+  transform: translate(calc(var(--ox, 0) * 100%), calc(var(--oy, 0) * 100%)) scale(var(--zoom, 1));
+  filter: brightness(var(--bright, 1)) contrast(var(--contrast, 1)) saturate(var(--sat, 1));
 }
+
+/* 필름 그레인 — SVG 난수 무늬를 겹쳐서 낸다 */
+.crop > .grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: var(--grain, 0);
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+  background-size: 140px 140px;
+}
+
+.frame-box img, .frame-box video { pointer-events: none; }
 
 .frame-box.empty {
   background: var(--frame-bg);
@@ -587,15 +608,60 @@ kbd {
 }
 @keyframes rise { from { transform: translateY(10px) scale(.99); opacity: 0; } }
 
-.modal-stage { position: relative; background: var(--frame-ink); display: grid; place-items: center; min-height: 260px; }
-.modal-media { width: 100%; height: 100%; display: grid; place-items: center; }
-.modal-media img, .modal-media video {
-  max-width: 100%;
-  max-height: calc(100dvh - 44px);
-  width: auto; height: auto;
-  display: block;
+.modal-stage {
+  position: relative;
+  background: #0A0B0D;
+  display: grid;
+  place-items: center;
+  min-height: 260px;
+  padding: 16px;
 }
-.modal-media .placeholder { color: #9BA1AA; font-size: 13px; text-align: center; padding: 40px; }
+.stage-inner { width: 100%; max-width: calc((100dvh - 150px) * 16 / 9); }
+
+/* 실제 프레임과 같은 16:9 — 여기 보이는 그대로가 저장된다 */
+.modal-media {
+  aspect-ratio: 16 / 9;
+  width: 100%;
+  background: var(--frame-ink);
+  border-radius: 3px;
+  cursor: grab;
+}
+.modal-media.grabbing { cursor: grabbing; }
+.modal-media .placeholder {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 12px;
+  color: #9BA1AA;
+  font-size: 13px;
+  text-align: center;
+  padding: 24px;
+}
+
+/* 영상 조작 막대 (네이티브 컨트롤은 크롭에 같이 잘려서 직접 만든다) */
+.transport {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  margin-top: 10px;
+  padding: 6px 10px;
+  background: #14161A;
+  border: 1px solid #262B34;
+  border-radius: 99px;
+  color: #E9ECF1;
+}
+.transport .hud-btn { color: #99A1AE; }
+.transport .hud-btn:hover { background: #262B34; color: #fff; }
+.tp-time { font-family: var(--mono); font-size: 11px; color: #99A1AE; min-width: 34px; text-align: center; }
+.tp-seek {
+  flex: 1;
+  min-width: 0;
+  accent-color: var(--accent);
+  height: 4px;
+  cursor: pointer;
+}
 
 .nav-btn {
   position: absolute;
@@ -643,6 +709,58 @@ kbd {
 }
 .side-actions .danger { margin-left: auto; }
 
+/* 화면 조정 패널 */
+.adjust { border-bottom: 1px solid var(--line-soft); }
+.adjust > summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 11px 14px;
+  cursor: pointer;
+  list-style: none;
+}
+.adjust > summary::-webkit-details-marker { display: none; }
+.adjust > summary .field-label { margin: 0; }
+.adjust > summary:hover { background: var(--surface-2); }
+.adjust-state { font-family: var(--mono); font-size: 10px; color: var(--dim); }
+.adjust-state.on { color: var(--accent); }
+.adjust[open] > summary .field-label { color: var(--accent); }
+
+.adjust-body { padding: 2px 14px 14px; }
+.adjust-body > * + * { margin-top: 9px; }
+
+.seg { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+.seg-btn {
+  border: 1px solid var(--line);
+  background: var(--bg-2);
+  color: var(--muted);
+  border-radius: var(--r);
+  padding: 4px 11px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color .14s, color .14s;
+}
+.seg-btn:hover { border-color: var(--accent); color: var(--accent); }
+.seg-btn[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.seg-note { font-size: 10.5px; color: var(--dim); margin-left: auto; }
+
+.slider { display: block; }
+.slider > span {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 3px;
+}
+.slider > span b { font-family: var(--mono); font-size: 11px; color: var(--text); font-weight: 500; }
+.slider input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+  height: 4px;
+  cursor: pointer;
+}
+
 .side-comments { flex: 1; min-height: 0; overflow-y: auto; padding: 14px; }
 .comment-list { display: flex; flex-direction: column; gap: 14px; margin-top: 10px; }
 .comment { display: flex; gap: 10px; }
@@ -684,8 +802,19 @@ kbd {
   display: grid;
   grid-template-rows: minmax(0, 1fr) auto auto;
 }
-.player-stage { display: grid; place-items: center; min-height: 0; background: #0A0B0D; }
-.player-stage img, .player-stage video { max-width: 100%; max-height: 100%; width: auto; height: auto; display: block; }
+/* 조정한 그대로 보이도록 프레임과 같은 16:9 로 재생한다 */
+.player-stage {
+  display: grid;
+  place-items: center;
+  min-height: 0;
+  background: #0A0B0D;
+  aspect-ratio: 16 / 9;
+  width: min(100%, calc((100dvh - 190px) * 16 / 9));
+  justify-self: center;
+  align-self: center;
+  position: relative;
+  overflow: hidden;
+}
 .player-stage .placeholder { color: #6B7480; font-size: 14px; }
 
 .player-bar {

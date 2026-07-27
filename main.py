@@ -146,12 +146,58 @@ def auto_place(index: int) -> tuple[float, float]:
     )
 
 
+# 프레임 안에서의 화면 조정. (필드, 최솟값, 최댓값, 기본값)
+ADJUST_RANGES = (
+    ("zoom", 1.0, 4.0, 1.0),
+    ("off_x", -0.5, 0.5, 0.0),
+    ("off_y", -0.5, 0.5, 0.0),
+    ("brightness", 0.2, 2.0, 1.0),
+    ("contrast", 0.2, 2.0, 1.0),
+    ("saturation", 0.0, 2.0, 1.0),
+    ("grain", 0.0, 1.0, 0.0),
+)
+FIT_MODES = ("contain", "cover")
+
+
+def adjust_json(row: sqlite3.Row) -> dict:
+    data = {"fit": row["fit"] if row["fit"] in FIT_MODES else "contain"}
+    for field, low, high, default in ADJUST_RANGES:
+        value = row[field]
+        data[field] = default if value is None else max(low, min(float(value), high))
+    return data
+
+
+def read_adjust(payload: dict, row: sqlite3.Row) -> dict:
+    """보내 온 값만 반영하고, 나머지는 그대로 둔다. 범위를 벗어나면 잘라 낸다."""
+    current = adjust_json(row)
+    incoming = payload.get("adjust")
+    if not isinstance(incoming, dict):
+        return current
+
+    fit = incoming.get("fit")
+    if fit in FIT_MODES:
+        current["fit"] = fit
+
+    for field, low, high, _ in ADJUST_RANGES:
+        if field not in incoming:
+            continue
+        try:
+            number = float(incoming[field])
+        except (TypeError, ValueError):
+            continue
+        if number != number or number in (float("inf"), float("-inf")):  # NaN / 무한대
+            continue
+        current[field] = max(low, min(number, high))
+    return current
+
+
 def scene_json(row: sqlite3.Row) -> dict:
     data = {
         "id": row["id"],
         "position": row["position"],
         "x": row["x"],
         "y": row["y"],
+        "adjust": adjust_json(row),
         "title": row["title"],
         "note": row["note"],
         "media_kind": row["media_kind"],
@@ -502,9 +548,19 @@ async def update_scene(scene_id: int, request: Request, user: sqlite3.Row = Depe
         note = str(payload.get("note", row["note"]))[:4000]
         x = _coord(payload.get("x"), row["x"])
         y = _coord(payload.get("y"), row["y"])
+        adjust = read_adjust(payload, row)
         conn.execute(
-            "UPDATE scenes SET title = ?, note = ?, x = ?, y = ?, updated_at = ? WHERE id = ?",
-            (title, note, x, y, db.now(), scene_id),
+            """UPDATE scenes SET title = ?, note = ?, x = ?, y = ?,
+                   fit = ?, zoom = ?, off_x = ?, off_y = ?,
+                   brightness = ?, contrast = ?, saturation = ?, grain = ?,
+                   updated_at = ?
+               WHERE id = ?""",
+            (
+                title, note, x, y,
+                adjust["fit"], adjust["zoom"], adjust["off_x"], adjust["off_y"],
+                adjust["brightness"], adjust["contrast"], adjust["saturation"], adjust["grain"],
+                db.now(), scene_id,
+            ),
         )
         touch_board(conn, row["board_id"])
         updated = conn.execute("SELECT * FROM scenes WHERE id = ?", (scene_id,)).fetchone()
@@ -589,10 +645,13 @@ def upload_media(
 
     old = row["media_key"]
     with db.tx() as conn:
+        # 파일이 바뀌면 이전 파일에 맞춰 둔 화면 조정은 의미가 없으므로 되돌린다
         conn.execute(
             """UPDATE scenes
                SET media_key = ?, media_kind = ?, media_name = ?, media_mime = ?,
-                   media_size = ?, updated_at = ?
+                   media_size = ?, updated_at = ?,
+                   fit = 'contain', zoom = 1, off_x = 0, off_y = 0,
+                   brightness = 1, contrast = 1, saturation = 1, grain = 0
                WHERE id = ?""",
             (key, kind, (file.filename or "")[:200], mime, size, db.now(), scene_id),
         )
@@ -612,7 +671,9 @@ def clear_media(scene_id: int, user: sqlite3.Row = Depends(require_user)):
             raise HTTPException(status_code=404, detail="없는 씬입니다.")
         conn.execute(
             """UPDATE scenes SET media_key = NULL, media_kind = NULL, media_name = NULL,
-                                 media_mime = NULL, media_size = NULL, updated_at = ?
+                                 media_mime = NULL, media_size = NULL, updated_at = ?,
+                                 fit = 'contain', zoom = 1, off_x = 0, off_y = 0,
+                                 brightness = 1, contrast = 1, saturation = 1, grain = 0
                WHERE id = ?""",
             (db.now(), scene_id),
         )
