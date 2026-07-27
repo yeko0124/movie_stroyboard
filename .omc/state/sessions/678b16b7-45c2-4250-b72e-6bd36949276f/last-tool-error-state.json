@@ -1,0 +1,7 @@
+{
+  "tool_name": "mcp__plugin_playwright_playwright__browser_navigate",
+  "tool_input_preview": "{\"url\":\"file:///C:/TEST/movie_storyboard/.playwright-mcp/harness.html\"}",
+  "error": "### Error\nError: Access to \"file:\" protocol is blocked. Attempted URL: \"file:///C:/TEST/movie_storyboard/.playwright-mcp/harness.html\"",
+  "timestamp": "2026-07-27T13:22:18.281Z",
+  "retry_count": 1
+}

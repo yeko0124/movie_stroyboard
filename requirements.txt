@@ -1,0 +1,6 @@
+fastapi>=0.115
+uvicorn>=0.32
+python-multipart>=0.0.12
+
+# Cloudflare R2 / S3 저장소로 전환할 때만 필요 (STORAGE_BACKEND=r2)
+# boto3>=1.35

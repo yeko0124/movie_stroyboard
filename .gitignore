@@ -1,0 +1,9 @@
+.venv/
+bin/
+__pycache__/
+*.pyc
+
+# 실제 데이터 — 옮길 때는 폴더째 복사하고, 깃에는 올리지 않는다
+.env
+data/
+media/

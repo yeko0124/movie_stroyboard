@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>스토리보드</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><rect width='16' height='16' rx='2' fill='%23F0A93C'/><rect x='3' y='5' width='10' height='6' rx='1' fill='%23131519'/></svg>">
+<link rel="stylesheet" href="/static/style.css">
+<script>
+  // 깜빡임 없이 저장된 테마를 먼저 입힌다
+  document.documentElement.dataset.theme = localStorage.getItem('sb-theme') || 'light';
+</script>
+</head>
+<body>
+
+<!-- ───────── 로그인 ───────── -->
+<section id="view-gate" class="view gate" hidden>
+  <div class="gate-card">
+    <div class="gate-mark">
+      <span class="mark-strip"></span>
+      <h1>스토리보드</h1>
+      <p class="mark-sub">영상 · 이미지로 씬을 짜고 같이 코멘트합니다</p>
+    </div>
+
+    <form id="form-code" class="gate-step">
+      <label class="field">
+        <span class="field-label">초대 코드</span>
+        <input id="input-code" type="text" autocomplete="off" spellcheck="false"
+               placeholder="팀에서 받은 코드" required>
+      </label>
+      <p class="err" id="err-code" hidden></p>
+      <button class="btn btn-primary btn-block" type="submit">들어가기</button>
+    </form>
+
+    <div id="step-profile" class="gate-step" hidden>
+      <div id="profile-list" class="profile-list"></div>
+
+      <form id="form-profile" class="new-profile">
+        <p class="field-label" id="new-profile-label">이름 정하기</p>
+        <div class="new-profile-row">
+          <button type="button" id="avatar-pick" class="avatar-pick" title="프로필 사진 고르기">
+            <span id="avatar-preview" class="av av-initial" style="--sz:56px;--c:#F0A93C">?</span>
+            <span class="avatar-pick-hint">사진</span>
+          </button>
+          <input type="file" id="avatar-file" accept="image/*" hidden>
+          <label class="field field-grow">
+            <span class="field-label">이름</span>
+            <input id="input-name" type="text" maxlength="24" placeholder="화면에 표시될 이름" autocomplete="off">
+          </label>
+        </div>
+        <div id="color-row" class="color-row"></div>
+        <p class="err" id="err-profile" hidden></p>
+        <button class="btn btn-primary btn-block" type="submit">시작하기</button>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- ───────── 보드 목록 ───────── -->
+<section id="view-boards" class="view" hidden>
+  <header class="topbar">
+    <div class="topbar-left">
+      <span class="wordmark">스토리보드</span>
+    </div>
+    <div class="topbar-right">
+      <span id="storage-note" class="storage-note"></span>
+      <button class="btn btn-ghost btn-icon theme-btn" data-act="theme" title="밝게 / 어둡게"></button>
+      <div id="me-chip" class="me-chip"></div>
+    </div>
+  </header>
+
+  <main class="page">
+    <div class="page-head">
+      <h2>보드</h2>
+      <button id="btn-new-board" class="btn btn-primary">새 보드</button>
+    </div>
+
+    <form id="form-new-board" class="new-board" hidden>
+      <input id="input-board-title" type="text" placeholder="보드 이름 (예: 브랜드필름 A안)" maxlength="120" required>
+      <label class="inline-field">
+        <span>시작 프레임</span>
+        <input id="input-board-scenes" type="number" min="0" max="60" value="6">
+      </label>
+      <button class="btn btn-primary" type="submit">만들기</button>
+      <button class="btn btn-ghost" type="button" id="btn-cancel-board">취소</button>
+    </form>
+
+    <div id="board-grid" class="board-grid"></div>
+  </main>
+</section>
+
+<!-- ───────── 보드 (캔버스) ───────── -->
+<section id="view-board" class="view view-canvas" hidden>
+  <header class="topbar">
+    <div class="topbar-left">
+      <button id="btn-back" class="btn btn-ghost btn-icon" title="보드 목록으로">←</button>
+      <input id="board-title" class="board-title" maxlength="120">
+      <span id="board-count" class="board-count"></span>
+    </div>
+    <div class="topbar-right">
+      <button id="btn-add-scene" class="btn btn-quiet">＋ 프레임</button>
+      <button class="btn btn-ghost btn-icon theme-btn" data-act="theme" title="밝게 / 어둡게"></button>
+      <button id="btn-delete-board" class="btn btn-ghost btn-icon" title="보드 삭제">🗑</button>
+      <div id="me-chip-2" class="me-chip"></div>
+    </div>
+  </header>
+
+  <div id="viewport" class="viewport">
+    <div id="world" class="world">
+      <svg id="links" class="links" aria-hidden="true"></svg>
+      <div id="frames" class="frames"></div>
+    </div>
+
+    <div id="marquee" class="marquee" hidden></div>
+
+    <p id="canvas-empty" class="canvas-empty" hidden>
+      빈 캔버스입니다. 파일을 끌어다 놓으면 프레임이 생깁니다.
+    </p>
+
+    <div id="selection-panel" class="selection-panel" hidden>
+      <p class="sel-count"><b id="sel-n">0</b>개 선택</p>
+      <p class="sel-sub" id="sel-sub"></p>
+      <button id="btn-play-seq" class="btn btn-primary btn-block">▶ 이어서 재생</button>
+      <button id="btn-clear-sel" class="btn btn-ghost btn-block btn-sm">선택 해제</button>
+    </div>
+
+    <div class="hud">
+      <button class="hud-btn" data-zoom="out" title="축소">−</button>
+      <button class="hud-btn hud-level" data-zoom="reset" title="100%로">100%</button>
+      <button class="hud-btn" data-zoom="in" title="확대">＋</button>
+      <span class="hud-sep"></span>
+      <button class="hud-btn" data-zoom="fit" title="전체 보기">전체 보기</button>
+      <span class="hud-sep"></span>
+      <button class="hud-btn hud-mode" id="btn-wheel-mode"
+              title="휠을 돌렸을 때 확대할지 화면을 옮길지 바꿉니다">휠 자동</button>
+    </div>
+
+    <p class="canvas-hint" id="canvas-hint"></p>
+  </div>
+</section>
+
+<!-- ───────── 프레임 상세 ───────── -->
+<div id="modal" class="modal" hidden>
+  <div class="modal-sheet" role="dialog" aria-modal="true" aria-labelledby="modal-slate">
+    <div class="modal-stage">
+      <button class="nav-btn nav-prev" id="btn-prev" title="이전 프레임">‹</button>
+      <div id="modal-media" class="modal-media"></div>
+      <button class="nav-btn nav-next" id="btn-next" title="다음 프레임">›</button>
+    </div>
+
+    <aside class="modal-side">
+      <header class="side-head">
+        <div>
+          <span id="modal-slate" class="slate-no"></span>
+          <span id="modal-file" class="modal-file"></span>
+        </div>
+        <button id="btn-close" class="btn btn-ghost btn-icon" title="닫기 (Esc)">✕</button>
+      </header>
+
+      <div class="side-edit">
+        <input id="modal-title" class="side-title" placeholder="프레임 제목" maxlength="120">
+        <textarea id="modal-note" class="side-note" placeholder="연출 노트 — 카메라, 동선, 사운드…" maxlength="4000" rows="3"></textarea>
+      </div>
+
+      <div class="side-actions">
+        <button id="btn-replace" class="btn btn-quiet btn-sm">파일 교체</button>
+        <button id="btn-clear-media" class="btn btn-ghost btn-sm">비우기</button>
+        <button id="btn-delete-scene" class="btn btn-ghost btn-sm danger">프레임 삭제</button>
+      </div>
+
+      <div class="side-comments">
+        <p class="field-label">코멘트</p>
+        <div id="comment-list" class="comment-list"></div>
+      </div>
+
+      <form id="form-comment" class="composer">
+        <div id="composer-av"></div>
+        <textarea id="input-comment" rows="1" placeholder="코멘트 남기기 — Enter로 등록" maxlength="4000"></textarea>
+        <button class="btn btn-primary btn-sm" type="submit">등록</button>
+      </form>
+    </aside>
+  </div>
+</div>
+
+<!-- ───────── 선택 구간 이어서 재생 ───────── -->
+<div id="player" class="player" hidden>
+  <div class="player-stage" id="player-stage"></div>
+
+  <div class="player-bar">
+    <button class="hud-btn" id="pl-prev" title="이전">‹</button>
+    <button class="hud-btn" id="pl-toggle" title="재생 / 일시정지">❚❚</button>
+    <button class="hud-btn" id="pl-next" title="다음">›</button>
+    <span class="player-now" id="pl-now"></span>
+    <span class="player-progress"><i id="pl-progress"></i></span>
+    <button class="hud-btn" id="pl-close" title="닫기 (Esc)">✕</button>
+  </div>
+
+  <div class="player-strip" id="pl-strip"></div>
+</div>
+
+<input type="file" id="media-file" accept="image/*,video/*" hidden>
+<div id="toast" class="toast" hidden></div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
