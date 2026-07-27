@@ -793,10 +793,21 @@ if __name__ == "__main__":
     config.ensure_dirs()
     db.init()
 
-    try:
-        lan_ip = socket.gethostbyname(socket.gethostname())
-    except OSError:
-        lan_ip = "127.0.0.1"
+    def find_lan_ip() -> str:
+        """실제로 패킷을 보내지는 않는다. 어느 랜카드로 나가는지만 커널에 물어본다.
+        맥에서 gethostbyname(hostname) 이 127.0.0.1 을 주는 경우가 있어 이 방식을 쓴다."""
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as probe:
+                probe.connect(("192.0.2.1", 9))  # 문서용으로 예약된 주소
+                return probe.getsockname()[0]
+        except OSError:
+            pass
+        try:
+            return socket.gethostbyname(socket.gethostname())
+        except OSError:
+            return "127.0.0.1"
+
+    lan_ip = find_lan_ip()
 
     banner = "\n".join([
         "",

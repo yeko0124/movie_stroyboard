@@ -15,6 +15,9 @@ const IMAGE_SECONDS = 3;      // 이어서 재생할 때 이미지 한 장을 �
 const ZOOM_MIN = 0.15;
 const ZOOM_MAX = 3;
 
+// 맥에서는 Ctrl 자리에 ⌘ 를 쓴다
+const IS_MAC = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
+
 const state = {
   me: null,
   boards: [],
@@ -602,10 +605,11 @@ function renderWheelMode() {
 
   const hint = $('#canvas-hint');
   if (hint) {
+    const mod = IS_MAC ? '⌘' : 'Ctrl';
     const wheelSays = {
       auto: '휠 확대',
       zoom: '휠 확대',
-      pan: '<kbd>Ctrl</kbd>+휠 확대',
+      pan: `<kbd>${mod}</kbd>+휠 확대`,
     }[wheelMode];
     hint.innerHTML = `${wheelSays} · 빈 곳 끌어 선택 · <kbd>Space</kbd>+끌기로 화면 이동`;
   }
@@ -1241,7 +1245,31 @@ function bindModal() {
 
 /* ───────── 선택한 프레임 이어서 재생 ───────── */
 
-const player = { list: [], i: 0, playing: false, timer: null, raf: null, start: 0 };
+const player = { list: [], i: 0, playing: false, timer: null, raf: null, start: 0, muted: false };
+
+/**
+ * 사파리를 비롯한 브라우저는 소리 있는 영상의 자동 재생을 막는다.
+ * 막히면 음소거로 한 번 더 시도해서 재생이 끊기지 않게 한다.
+ */
+function playVideo(video, onBlocked) {
+  video.muted = player.muted;
+  video.play().catch(() => {
+    video.muted = true;
+    player.muted = true;
+    renderSoundButton();
+    video.play().then(() => {
+      toast('브라우저가 소리 자동재생을 막아 음소거로 재생합니다. 🔊 를 누르면 소리가 켜집니다.');
+    }).catch(onBlocked);
+  });
+}
+
+function renderSoundButton() {
+  const btn = $('#pl-sound');
+  if (btn) {
+    btn.textContent = player.muted ? '🔇' : '🔊';
+    btn.title = player.muted ? '소리 켜기' : '소리 끄기';
+  }
+}
 
 function playSequence(scenes) {
   const list = scenes.filter((s) => s.media_url);
@@ -1251,6 +1279,7 @@ function playSequence(scenes) {
   player.i = 0;
   $('#player').hidden = false;
   document.body.style.overflow = 'hidden';
+  renderSoundButton();
 
   $('#pl-strip').innerHTML = list.map((s, i) => {
     const no = pad2(indexOfScene(s.id) + 1);
@@ -1296,7 +1325,11 @@ function playAt(index) {
       toast(`SC ${no} 영상을 재생할 수 없습니다. 다음으로 넘어갑니다.`, true);
       player.timer = setTimeout(advance, 900);
     });
-    video.play().catch(() => { /* 자동재생 차단 시 사용자가 버튼을 누르면 된다 */ });
+    playVideo(video, () => {
+      // 음소거로도 막히면 멈춰 두고 사용자가 ▶ 를 누르게 한다
+      player.playing = false;
+      $('#pl-toggle').textContent = '▶';
+    });
   } else {
     stage.innerHTML = `<img src="${esc(scene.media_url)}" alt="${esc(scene.title || `SC ${no}`)}">`;
     startImageClock(IMAGE_SECONDS * 1000);
@@ -1341,7 +1374,7 @@ function togglePlay() {
   $('#pl-toggle').textContent = '❚❚';
   if (video) {
     if (video.ended) playAt(player.i);
-    else video.play().catch(() => {});
+    else playVideo(video, () => { player.playing = false; $('#pl-toggle').textContent = '▶'; });
   } else {
     const done = Number($('#pl-progress').style.width.replace('%', '')) / 100 || 0;
     if (done >= 1) playAt(player.i);
@@ -1360,6 +1393,12 @@ function closePlayer() {
 
 function bindPlayer() {
   $('#pl-close').addEventListener('click', closePlayer);
+  $('#pl-sound').addEventListener('click', () => {
+    player.muted = !player.muted;
+    const video = $('#player-stage video');
+    if (video) video.muted = player.muted;
+    renderSoundButton();
+  });
   $('#pl-toggle').addEventListener('click', togglePlay);
   $('#pl-prev').addEventListener('click', () => playAt(Math.max(0, player.i - 1)));
   $('#pl-next').addEventListener('click', () => playAt(Math.min(player.list.length - 1, player.i + 1)));

@@ -12,13 +12,15 @@
 
 from __future__ import annotations
 
+import io
 import os
 import platform
 import re
 import secrets
-import signal
+import shutil
 import subprocess
 import sys
+import tarfile
 import threading
 import time
 import urllib.request
@@ -37,6 +39,7 @@ DOWNLOADS = {
     ("Darwin", "x86_64"): "cloudflared-darwin-amd64.tgz",
     ("Linux", "x86_64"): "cloudflared-linux-amd64",
     ("Linux", "aarch64"): "cloudflared-linux-arm64",
+    ("Linux", "arm64"): "cloudflared-linux-arm64",
 }
 RELEASE_URL = "https://github.com/cloudflare/cloudflared/releases/latest/download/"
 URL_PATTERN = re.compile(r"https://[a-z0-9][a-z0-9-]*\.trycloudflare\.com")
@@ -81,41 +84,91 @@ def ensure_invite_code() -> str:
 # ─────────────────────────────────────────────────────────────
 
 
+def download_names() -> list[str]:
+    """이 환경에 맞는 내려받기 후보. 앞의 것부터 시도한다."""
+    system, machine = platform.system(), platform.machine()
+    names = DOWNLOADS.get((system, machine))
+    if names is None:
+        return []
+    # 애플 실리콘용이 없을 때를 대비해 인텔용을 예비로 둔다 (로제타로 돌아간다)
+    if system == "Darwin" and machine == "arm64":
+        return [names, DOWNLOADS[("Darwin", "x86_64")]]
+    return [names]
+
+
+def fetch(url: str, timeout: int = 180) -> bytes:
+    with urllib.request.urlopen(url, timeout=timeout) as res:
+        return res.read()
+
+
 def cloudflared_path() -> Path:
-    key = (platform.system(), platform.machine())
-    name = DOWNLOADS.get(key)
-    if name is None:
-        raise SystemExit(f"이 환경({key})에 맞는 cloudflared 를 모르겠습니다. 직접 받아 bin/ 에 넣어 주세요.")
-    suffix = ".exe" if platform.system() == "Windows" else ""
+    is_windows = platform.system() == "Windows"
+    suffix = ".exe" if is_windows else ""
     target = BIN_DIR / f"cloudflared{suffix}"
 
     if target.exists():
         return target
-    if name.endswith(".tgz"):
+
+    # 이미 설치돼 있으면 (brew 등) 그걸 쓴다
+    found = shutil.which("cloudflared")
+    if found:
+        say(f"  이미 설치된 cloudflared 를 씁니다: {found}")
+        return Path(found)
+
+    names = download_names()
+    if not names:
         raise SystemExit(
-            "macOS 는 자동 설치를 지원하지 않습니다. `brew install cloudflared` 로 설치해 주세요."
+            f"이 환경({platform.system()} {platform.machine()})에 맞는 cloudflared 를 모르겠습니다.\n"
+            f"  직접 받아 bin/cloudflared{suffix} 로 넣어 주세요: {RELEASE_URL}"
         )
 
     BIN_DIR.mkdir(parents=True, exist_ok=True)
-    url = RELEASE_URL + name
     say("  cloudflared 를 받는 중입니다 (약 18MB, 처음 한 번만)...")
-    try:
-        with urllib.request.urlopen(url, timeout=120) as res, target.open("wb") as out:
-            while chunk := res.read(1 << 16):
-                out.write(chunk)
-    except Exception as exc:
-        if target.exists():
-            target.unlink()
-        raise SystemExit(
-            f"  cloudflared 를 받지 못했습니다: {exc}\n"
-            f"  회사 네트워크가 막고 있을 수 있습니다. 아래에서 직접 받아 bin/ 에 넣어 주세요.\n"
-            f"  {url}"
-        ) from exc
 
-    if suffix == "":
-        target.chmod(0o755)
-    say("  받았습니다.")
-    return target
+    problems = []
+    for name in names:
+        url = RELEASE_URL + name
+        try:
+            blob = fetch(url)
+        except Exception as exc:
+            problems.append(f"{name}: {exc}")
+            continue
+
+        try:
+            if name.endswith(".tgz"):
+                # macOS 배포본은 tgz 안에 실행 파일 하나가 들어 있다
+                with tarfile.open(fileobj=io.BytesIO(blob), mode="r:gz") as tar:
+                    member = next(
+                        (m for m in tar.getmembers()
+                         if m.isfile() and Path(m.name).name == "cloudflared"),
+                        None,
+                    )
+                    if member is None:
+                        problems.append(f"{name}: 압축 안에 cloudflared 가 없습니다")
+                        continue
+                    extracted = tar.extractfile(member)
+                    if extracted is None:
+                        problems.append(f"{name}: 압축을 풀지 못했습니다")
+                        continue
+                    target.write_bytes(extracted.read())
+            else:
+                target.write_bytes(blob)
+        except Exception as exc:
+            problems.append(f"{name}: {exc}")
+            if target.exists():
+                target.unlink()
+            continue
+
+        if not is_windows:
+            target.chmod(0o755)
+        say("  받았습니다.")
+        return target
+
+    raise SystemExit(
+        "  cloudflared 를 받지 못했습니다.\n    " + "\n    ".join(problems) + "\n"
+        "  네트워크가 막고 있을 수 있습니다. 아래에서 직접 받아 bin/ 에 넣어 주세요.\n"
+        f"  {RELEASE_URL}"
+    )
 
 
 # ─────────────────────────────────────────────────────────────

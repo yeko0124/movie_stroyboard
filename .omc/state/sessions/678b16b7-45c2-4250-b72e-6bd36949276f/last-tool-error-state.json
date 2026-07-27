@@ -1,7 +1,7 @@
 {
-  "tool_name": "mcp__plugin_playwright_playwright__browser_navigate",
-  "tool_input_preview": "{\"url\":\"file:///C:/TEST/movie_storyboard/.playwright-mcp/harness.html\"}",
-  "error": "### Error\nError: Access to \"file:\" protocol is blocked. Attempted URL: \"file:///C:/TEST/movie_storyboard/.playwright-mcp/harness.html\"",
-  "timestamp": "2026-07-27T13:22:18.281Z",
+  "tool_name": "Bash",
+  "tool_input_preview": "{\"command\":\"SP=\\\"C:/Users/vfxyeko/AppData/Local/Temp/claude/c--TEST-movie-storyboard/678b16b7-45c2-4250-b72e-6bd36949276f/scratchpad\\\"\\nPYTHONIOENCODING=utf-8 .venv/Scripts/python.exe \\\"$SP/mac_test.p...",
+  "error": "Exit code 1\n\r\n[1] 애플 실리콘 (arm64)\r\n  cloudflared 를 받는 중입니다 (약 18MB, 처음 한 번만)...\r\n  받았습니다.\r\n  OK   arm64 배포본을 먼저 찾는다\r\n  OK   확장자 없는 이름으로 저장\r\n  OK   압축에서 실행 파일을 꺼냄\r\n  FAIL 실행 권한 부여  0o100666\r\n\r\n[2] arm64 배포본이 없을 때 → 인텔용으로 대체 (로제타)\r\n  cloudflared 를 받는 중입니다 (약 18MB, 처음 한 번만)...\r\n  받았습니다.\r\n  OK   arm64 먼저 시도하고 실패\r\n  OK   amd64 로 다시 시도\r\n  OK   결국 받아냄\r\n\r\n[3] 인텔 맥 (x86_64)\r\n  cloudflared 를 받는 중입니다 (약 18MB, 처음 한 번만)...\r\n  받았습니다.\r\n  OK   amd64 만 시도\r\n  OK   받아냄\r\n\r\n[4] 압축 안에 경로가 섞여 있어도 찾는다\r\n  cloudflared 를 받...",
+  "timestamp": "2026-07-27T13:55:32.488Z",
   "retry_count": 1
 }

@@ -342,7 +342,9 @@ textarea { resize: vertical; }
   background-size: 24px 24px;
   cursor: default;
   touch-action: none;
+  -webkit-user-select: none;   /* 사파리 */
   user-select: none;
+  overscroll-behavior: contain;  /* 맥에서 두 손가락 스크롤이 뒤로가기로 새지 않게 */
 }
 .viewport.panning { cursor: grabbing; }
 .viewport.space-ready { cursor: grab; }
@@ -562,6 +564,7 @@ kbd {
   inset: 0;
   z-index: 100;
   background: rgba(10, 12, 16, .72);
+  -webkit-backdrop-filter: blur(5px);   /* 사파리 */
   backdrop-filter: blur(5px);
   display: grid;
   place-items: center;

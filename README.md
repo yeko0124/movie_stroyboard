@@ -10,9 +10,29 @@
 
 ## 실행
 
-`run.bat` 을 더블클릭한다. 처음 한 번은 준비하느라 1~2분 걸리고, 그다음부터는 바로 뜬다.
+| | 서버만 (같은 와이파이) | 밖에서도 접속 |
+|---|---|---|
+| **윈도우** | `run.bat` | `run-share.bat` |
+| **맥 · 리눅스** | `run.command` | `run-share.command` |
 
-창에 주소가 두 개 찍힌다.
+더블클릭하면 된다. 처음 한 번은 준비하느라 1~2분 걸리고, 그다음부터는 바로 뜬다.
+
+### 맥에서 처음 열 때
+
+맥은 내려받은 실행 파일을 바로 못 열게 막아 둔다. 두 가지 중 하나만 하면 된다.
+
+- **파일을 우클릭 → 열기 → "열기"** (한 번만 하면 그다음부터는 더블클릭으로 열린다)
+- 또는 터미널에서 실행 권한을 준다:
+
+  ```bash
+  cd /스토리보드/폴더/경로
+  chmod +x run.command run-share.command
+  ```
+
+파이썬이 없다고 나오면 터미널에 `xcode-select --install` 을 붙여넣어 설치한다.
+(맥은 `python3` 로 잡히는데, 스크립트가 알아서 찾는다.)
+
+창(맥은 터미널)에 주소가 두 개 찍힌다.
 
 ```
 내 PC        http://localhost:8080
@@ -21,13 +41,16 @@
 
 **이 창을 닫으면 서버도 꺼진다.** 팀원이 쓰는 동안은 켜 둔다.
 
-Python이 없다는 메시지가 나오면 [python.org](https://www.python.org/downloads/)에서 설치하고,
+윈도우에서 Python이 없다는 메시지가 나오면 [python.org](https://www.python.org/downloads/)에서 설치하고,
 설치 화면의 **"Add python.exe to PATH"** 를 반드시 체크한다.
 
 ### 팀원이 접속이 안 될 때
 
 같은 공유기(사무실 와이파이 등)에 붙어 있어야 한다. 그런데도 안 되면 방화벽이 막고 있는 것이다.
-Windows 방화벽에서 8080 포트를 열거나, 처음 실행할 때 뜨는 "액세스 허용" 창에서 허용을 누른다.
+
+- **윈도우** — 방화벽에서 8080 포트를 열거나, 처음 실행할 때 뜨는 "액세스 허용" 창에서 허용을 누른다
+- **맥** — 시스템 설정 → 네트워크 → 방화벽에서 들어오는 연결 허용을 확인한다. 처음 실행할 때
+  "Python 응용 프로그램에서 들어오는 네트워크 연결을 허용하겠습니까?" 창이 뜨면 **허용**을 누른다
 
 ## 밖에서도 접속하기
 
@@ -38,7 +61,7 @@ Windows 방화벽에서 8080 포트를 열거나, 처음 실행할 때 뜨는 "�
 
 ### 방법 1 — Cloudflare 터널 (팀원은 설치할 게 없다)
 
-`run-share.bat` 을 실행한다. 알아서 이렇게 한다.
+`run-share.bat` (맥은 `run-share.command`) 을 실행한다. 알아서 이렇게 한다.
 
 1. 초대 코드가 없으면 하나 만들어 `.env` 에 적어 둔다 (밖으로 열리니 잠가야 한다)
 2. `cloudflared` 를 받아 `bin/` 에 둔다 (약 18MB, 처음 한 번만)
@@ -65,7 +88,7 @@ Windows 방화벽에서 8080 포트를 열거나, 처음 실행할 때 뜨는 "�
 
 1. 세 명 모두 [tailscale.com/download](https://tailscale.com/download) 에서 설치하고 같은 계정으로 로그인한다
    (개인 무료 플랜이 3명까지 커버한다. 회사 PC에 설치하려면 관리자 권한이 필요할 수 있다)
-2. 이 PC에서 `run.bat` 을 실행한다
+2. 이 PC에서 `run.bat` (맥은 `run.command`) 을 실행한다
 3. 팀원은 `http://<이 PC의 Tailscale 이름>:8080` 으로 접속한다
    (이름은 Tailscale 관리 화면이나 트레이 메뉴에서 확인한다. `http://100.x.x.x:8080` 형태의 IP 도 된다)
 
@@ -73,16 +96,18 @@ Windows 방화벽에서 8080 포트를 열거나, 처음 실행할 때 뜨는 "�
 
 ## 집으로 옮기기
 
-이 폴더 하나에 전부 들어 있다. **폴더째 복사해서 옮기고 `run.bat` 을 실행하면 그대로 이어서 쓴다.**
+이 폴더 하나에 전부 들어 있다. **폴더째 복사해서 옮기고 실행하면 그대로 이어서 쓴다.**
+윈도우 ↔ 맥으로 옮겨도 된다. 데이터 파일은 양쪽에서 똑같이 읽힌다.
 
 | 폴더 | 내용 |
 |---|---|
 | `data/` | 보드, 프레임, 코멘트, 계정 (`storyboard.db` 파일 하나) |
 | `media/` | 올린 영상과 이미지 |
 | `.env` | 초대 코드 등 설정 |
-| `.venv/`, `bin/` | 파이썬 꾸러미와 cloudflared. 안 옮겨도 된다 (없으면 다시 만든다) |
+| `.venv/`, `bin/` | 파이썬 꾸러미와 cloudflared. **옮기면 안 된다** — 윈도우용과 맥용이 다르다. 지우고 옮기면 알아서 다시 만든다 |
 
-USB로 옮길 때 `.venv` 와 `bin` 은 빼고 `data`, `media`, 나머지 파일만 복사하면 용량이 줄어든다.
+USB로 옮길 때는 `.venv` 와 `bin` 을 빼고 `data`, `media`, 나머지 파일만 복사한다.
+용량도 줄고, 다른 운영체제로 옮길 때 생기는 문제도 없다.
 
 ## 조작
 
@@ -135,7 +160,9 @@ MAX_UPLOAD_MB=2048
 기본은 이 폴더의 `media/` 다. 로컬 용량이 아까우면 Cloudflare R2 로 옮길 수 있다.
 무료로 10GB 를 주고, 다운로드 트래픽 요금이 없어서 영상에 적합하다.
 
-1. `pip install boto3` (또는 `.venv\Scripts\python.exe -m pip install boto3`)
+1. boto3 를 설치한다
+   - 윈도우: `.venv\Scripts\python.exe -m pip install boto3`
+   - 맥·리눅스: `.venv/bin/python -m pip install boto3`
 2. R2 에서 버킷과 API 토큰을 만든다
 3. `.env` 에 아래를 채운다
 
@@ -165,12 +192,14 @@ R2_SECRET_ACCESS_KEY=...
 ### 파일 구성
 
 ```
-run.bat        서버만 켠다 (같은 와이파이)
-run-share.bat  서버 + 터널 (밖에서도 접속)
-main.py        API 와 화면 서빙
-share.py       터널 준비와 실행
-config.py      설정 (.env 읽기)
-db.py          SQLite 스키마
-storage.py     파일 저장 (로컬 / R2 교체 가능)
-static/        화면 (index.html, style.css, app.js)
+run.bat / run.command              서버만 켠다 (같은 와이파이)
+run-share.bat / run-share.command  서버 + 터널 (밖에서도 접속)
+main.py                            API 와 화면 서빙
+share.py                           터널 준비와 실행
+config.py                          설정 (.env 읽기)
+db.py                              SQLite 스키마
+storage.py                         파일 저장 (로컬 / R2 교체 가능)
+static/                            화면 (index.html, style.css, app.js)
 ```
+
+윈도우 · 맥 · 리눅스에서 같은 코드가 돈다. 필요한 것은 파이썬 3.9 이상뿐이다.
